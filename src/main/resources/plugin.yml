@@ -1,0 +1,23 @@
+name: EasyPronouns
+version: 1.0.0
+main: com.gamercorpse.easypronouns.EasyPronouns
+api-version: '1.21'
+folia-supported: true
+softdepend:
+  - PlaceholderAPI
+
+commands:
+  pronouns:
+    description: Open the pronouns GUI.
+    usage: /pronouns
+    aliases:
+      - easypronouns
+      - epronouns
+
+permissions:
+  easypronouns.use:
+    description: Allows players to use pronouns.
+    default: true
+  easypronouns.reload:
+    description: Allows reloading EasyPronouns.
+    default: op

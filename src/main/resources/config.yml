@@ -1,0 +1,90 @@
+storage:
+  mysql:
+    enabled: true
+    host: localhost
+    port: 3306
+    database: easypronouns
+    username: root
+    password: password
+    table: easy_pronouns
+    useSSL: false
+    allowPublicKeyRetrieval: true
+
+settings:
+  max-pronouns:
+    enabled: true
+    amount: 3
+
+  separator: "&7, "
+
+display:
+  chat:
+    enabled: true
+    format: "&8[&#ff66cc%pronouns%&8] "
+
+  tablist:
+    enabled: true
+    format: " &8[&#ff66cc%pronouns%&8]"
+
+gui:
+  title: "&#ff66ccEasy Pronouns"
+  size: 54
+  filler:
+    enabled: true
+    material: BLACK_STAINED_GLASS_PANE
+    name: " "
+  selected-lore:
+    - "&aSelected"
+    - "&7Click to remove."
+  unselected-lore:
+    - "&7Click to select."
+  max-reached-message: "&cYou can only select up to &f%max% &cpronouns."
+  saved-message: "&aYour pronouns have been updated: &f%pronouns%"
+  clear:
+    slot: 49
+    material: BARRIER
+    name: "&cClear Pronouns"
+    lore:
+      - "&7Click to remove all selected pronouns."
+
+pronouns:
+  he_him:
+    slot: 10
+    material: BLUE_DYE
+    display: "&bHe/Him"
+    value: "He/Him"
+  she_her:
+    slot: 11
+    material: PINK_DYE
+    display: "&dShe/Her"
+    value: "She/Her"
+  they_them:
+    slot: 12
+    material: PURPLE_DYE
+    display: "&5They/Them"
+    value: "They/Them"
+  he_they:
+    slot: 13
+    material: CYAN_DYE
+    display: "&3He/They"
+    value: "He/They"
+  she_they:
+    slot: 14
+    material: MAGENTA_DYE
+    display: "&dShe/They"
+    value: "She/They"
+  ask_me:
+    slot: 15
+    material: NAME_TAG
+    display: "&eAsk Me"
+    value: "Ask Me"
+  any:
+    slot: 16
+    material: LIME_DYE
+    display: "&aAny"
+    value: "Any"
+
+messages:
+  no-permission: "&cYou do not have permission."
+  reloaded: "&aEasyPronouns reloaded."
+  storage-error: "&cStorage error. Please contact an administrator."
