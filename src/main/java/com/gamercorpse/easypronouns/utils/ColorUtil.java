@@ -1,7 +1,6 @@
 package com.gamercorpse.easypronouns.utils;
 
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.format.TextColor;
 
 import java.util.ArrayList;
@@ -25,31 +24,35 @@ public final class ColorUtil {
         input = applyLegacy(input);
 
         Matcher gradientMatcher = GRADIENT_PATTERN.matcher(input);
-        TextComponent.Builder builder = Component.text();
+        Component component = Component.empty();
 
         int last = 0;
         while (gradientMatcher.find()) {
             if (gradientMatcher.start() > last) {
-                builder.append(colorPlain(input.substring(last, gradientMatcher.start())));
+                component = component.append(colorPlain(input.substring(last, gradientMatcher.start())));
             }
 
             String startHex = gradientMatcher.group(1);
             String endHex = gradientMatcher.group(2);
             String text = gradientMatcher.group(3);
 
-            builder.append(gradient(text, startHex, endHex));
+            component = component.append(gradient(text, startHex, endHex));
             last = gradientMatcher.end();
         }
 
         if (last < input.length()) {
-            builder.append(colorPlain(input.substring(last)));
+            component = component.append(colorPlain(input.substring(last)));
         }
 
-        return builder.build();
+        return component;
     }
 
     public static List<Component> colorList(List<String> input) {
         List<Component> components = new ArrayList<>();
+
+        if (input == null) {
+            return components;
+        }
 
         for (String line : input) {
             components.add(color(line));
@@ -59,7 +62,7 @@ public final class ColorUtil {
     }
 
     private static Component colorPlain(String input) {
-        TextComponent.Builder builder = Component.text();
+        Component component = Component.empty();
         Matcher matcher = HEX_PATTERN.matcher(input);
 
         int last = 0;
@@ -67,7 +70,7 @@ public final class ColorUtil {
 
         while (matcher.find()) {
             if (matcher.start() > last) {
-                builder.append(Component.text(input.substring(last, matcher.start()), activeColor));
+                component = component.append(Component.text(input.substring(last, matcher.start()), activeColor));
             }
 
             activeColor = TextColor.fromHexString("#" + matcher.group(1));
@@ -75,14 +78,14 @@ public final class ColorUtil {
         }
 
         if (last < input.length()) {
-            builder.append(Component.text(input.substring(last), activeColor));
+            component = component.append(Component.text(input.substring(last), activeColor));
         }
 
-        return builder.build();
+        return component;
     }
 
     private static Component gradient(String text, String startHex, String endHex) {
-        TextComponent.Builder builder = Component.text();
+        Component component = Component.empty();
 
         int startRed = Integer.parseInt(startHex.substring(0, 2), 16);
         int startGreen = Integer.parseInt(startHex.substring(2, 4), 16);
@@ -101,10 +104,10 @@ public final class ColorUtil {
             int green = (int) (startGreen + (endGreen - startGreen) * ratio);
             int blue = (int) (startBlue + (endBlue - startBlue) * ratio);
 
-            builder.append(Component.text(String.valueOf(text.charAt(i)), TextColor.color(red, green, blue)));
+            component = component.append(Component.text(String.valueOf(text.charAt(i)), TextColor.color(red, green, blue)));
         }
 
-        return builder.build();
+        return component;
     }
 
     private static String applyLegacy(String input) {

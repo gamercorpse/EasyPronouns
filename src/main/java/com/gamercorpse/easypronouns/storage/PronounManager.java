@@ -16,32 +16,30 @@ public final class PronounManager {
 
     private final EasyPronouns plugin;
     private final DatabaseManager databaseManager;
+    private final YamlPronounStorage yamlPronounStorage;
     private final ConcurrentHashMap<UUID, List<String>> cache = new ConcurrentHashMap<>();
+    private final boolean useMysql;
 
     public PronounManager(EasyPronouns plugin, DatabaseManager databaseManager) {
         this.plugin = plugin;
         this.databaseManager = databaseManager;
+        this.yamlPronounStorage = new YamlPronounStorage(plugin);
+
+        this.useMysql = databaseManager.isMysqlConfigured()
+                && databaseManager.isMysqlAvailable();
+
+        if (!useMysql) {
+            yamlPronounStorage.load();
+        }
     }
 
     public CompletableFuture<Void> loadPlayer(UUID uuid) {
         return CompletableFuture.runAsync(() -> {
-            List<String> pronouns = new ArrayList<>();
-
-            String sql = "SELECT pronouns FROM `" + databaseManager.getTable() + "` WHERE uuid = ?";
-
-            try (PreparedStatement statement = databaseManager.getConnection().prepareStatement(sql)) {
-                statement.setString(1, uuid.toString());
-
-                try (ResultSet result = statement.executeQuery()) {
-                    if (result.next()) {
-                        pronouns.addAll(deserialize(result.getString("pronouns")));
-                    }
-                }
-            } catch (SQLException exception) {
-                plugin.getLogger().warning("Could not load pronouns for " + uuid + ": " + exception.getMessage());
+            if (useMysql) {
+                loadPlayerFromMysql(uuid);
+            } else {
+                cache.put(uuid, yamlPronounStorage.getPronouns(uuid));
             }
-
-            cache.put(uuid, pronouns);
         });
     }
 
@@ -50,15 +48,10 @@ public final class PronounManager {
         cache.put(uuid, safeList);
 
         return CompletableFuture.runAsync(() -> {
-            String sql = "INSERT INTO `" + databaseManager.getTable() + "` (uuid, pronouns) VALUES (?, ?) "
-                    + "ON DUPLICATE KEY UPDATE pronouns = VALUES(pronouns)";
-
-            try (PreparedStatement statement = databaseManager.getConnection().prepareStatement(sql)) {
-                statement.setString(1, uuid.toString());
-                statement.setString(2, serialize(safeList));
-                statement.executeUpdate();
-            } catch (SQLException exception) {
-                plugin.getLogger().warning("Could not save pronouns for " + uuid + ": " + exception.getMessage());
+            if (useMysql) {
+                savePlayerToMysql(uuid, safeList);
+            } else {
+                yamlPronounStorage.setPronouns(uuid, safeList);
             }
         });
     }
@@ -90,6 +83,58 @@ public final class PronounManager {
     public String getFormattedPronouns(UUID uuid) {
         String separator = plugin.getConfig().getString("settings.separator", "&7, ");
         return String.join(separator, getPronouns(uuid));
+    }
+
+    public String getStorageTypeName() {
+        return useMysql ? "MySQL" : "YAML";
+    }
+
+    public void shutdown() {
+        if (!useMysql) {
+            yamlPronounStorage.save();
+        }
+    }
+
+    private void loadPlayerFromMysql(UUID uuid) {
+        List<String> pronouns = new ArrayList<>();
+
+        String sql = "SELECT pronouns FROM `" + databaseManager.getTable() + "` WHERE uuid = ?";
+
+        try (PreparedStatement statement = databaseManager.getConnection().prepareStatement(sql)) {
+            statement.setString(1, uuid.toString());
+
+            try (ResultSet result = statement.executeQuery()) {
+                if (result.next()) {
+                    pronouns.addAll(deserialize(result.getString("pronouns")));
+                }
+            }
+        } catch (SQLException exception) {
+            plugin.getLogger().warning("Could not load pronouns from MySQL for " + uuid + ": " + exception.getMessage());
+
+            if (databaseManager.shouldFallbackToYaml()) {
+                cache.put(uuid, yamlPronounStorage.getPronouns(uuid));
+                return;
+            }
+        }
+
+        cache.put(uuid, pronouns);
+    }
+
+    private void savePlayerToMysql(UUID uuid, List<String> pronouns) {
+        String sql = "INSERT INTO `" + databaseManager.getTable() + "` (uuid, pronouns) VALUES (?, ?) "
+                + "ON DUPLICATE KEY UPDATE pronouns = VALUES(pronouns)";
+
+        try (PreparedStatement statement = databaseManager.getConnection().prepareStatement(sql)) {
+            statement.setString(1, uuid.toString());
+            statement.setString(2, serialize(pronouns));
+            statement.executeUpdate();
+        } catch (SQLException exception) {
+            plugin.getLogger().warning("Could not save pronouns to MySQL for " + uuid + ": " + exception.getMessage());
+
+            if (databaseManager.shouldFallbackToYaml()) {
+                yamlPronounStorage.setPronouns(uuid, pronouns);
+            }
+        }
     }
 
     private List<String> sanitize(List<String> pronouns) {

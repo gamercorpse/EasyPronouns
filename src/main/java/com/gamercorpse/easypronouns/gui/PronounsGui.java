@@ -39,17 +39,17 @@ public final class PronounsGui {
             }
         }
 
-        ConfigurationSection section = plugin.getConfig().getConfigurationSection("pronouns");
+        ConfigurationSection section = plugin.getPronounsConfig().getConfigurationSection("pronouns");
         if (section != null) {
             Set<String> keys = section.getKeys(false);
             for (String key : keys) {
                 String path = "pronouns." + key + ".";
-                int slot = plugin.getConfig().getInt(path + "slot", -1);
+                int slot = plugin.getPronounsConfig().getInt(path + "slot", -1);
                 if (slot < 0 || slot >= size) continue;
 
-                String value = plugin.getConfig().getString(path + "value", key);
-                String display = plugin.getConfig().getString(path + "display", value);
-                Material material = Material.matchMaterial(plugin.getConfig().getString(path + "material", "PAPER"));
+                String value = plugin.getPronounsConfig().getString(path + "value", key);
+                String display = plugin.getPronounsConfig().getString(path + "display", value);
+                Material material = Material.matchMaterial(plugin.getPronounsConfig().getString(path + "material", "PAPER"));
                 if (material == null) material = Material.PAPER;
 
                 boolean selected = plugin.getPronounManager().hasPronoun(player.getUniqueId(), value);

@@ -11,14 +11,22 @@ public final class DatabaseManager {
 
     private final EasyPronouns plugin;
     private Connection connection;
+    private boolean mysqlAvailable;
 
     public DatabaseManager(EasyPronouns plugin) {
         this.plugin = plugin;
     }
 
     public synchronized void connect() {
+        mysqlAvailable = false;
+
+        if (!isMysqlConfigured()) {
+            return;
+        }
+
         try {
             if (connection != null && !connection.isClosed()) {
+                mysqlAvailable = true;
                 return;
             }
 
@@ -38,12 +46,22 @@ public final class DatabaseManager {
                     + "&characterEncoding=utf8";
 
             connection = DriverManager.getConnection(url, username, password);
+            mysqlAvailable = true;
         } catch (SQLException exception) {
-            plugin.getLogger().severe("Could not connect to MySQL: " + exception.getMessage());
+            mysqlAvailable = false;
+            plugin.getLogger().warning("Could not connect to MySQL: " + exception.getMessage());
+
+            if (plugin.getConfig().getBoolean("storage.mysql.fallback-to-yaml", true)) {
+                plugin.getLogger().warning("Falling back to YAML storage.");
+            }
         }
     }
 
     public synchronized void createTables() {
+        if (!mysqlAvailable) {
+            return;
+        }
+
         String table = getTable();
 
         try (Statement statement = getConnection().createStatement()) {
@@ -55,7 +73,12 @@ public final class DatabaseManager {
                     )
                     """.formatted(table));
         } catch (SQLException exception) {
+            mysqlAvailable = false;
             plugin.getLogger().severe("Could not create database table: " + exception.getMessage());
+
+            if (plugin.getConfig().getBoolean("storage.mysql.fallback-to-yaml", true)) {
+                plugin.getLogger().warning("Falling back to YAML storage.");
+            }
         }
     }
 
@@ -64,7 +87,25 @@ public final class DatabaseManager {
             connect();
         }
 
+        if (connection == null || !mysqlAvailable) {
+            throw new SQLException("MySQL is not available.");
+        }
+
         return connection;
+    }
+
+    public boolean isMysqlConfigured() {
+        String type = plugin.getConfig().getString("storage.type", "mysql");
+        boolean mysqlEnabled = plugin.getConfig().getBoolean("storage.mysql.enabled", true);
+        return mysqlEnabled && type.equalsIgnoreCase("mysql");
+    }
+
+    public boolean isMysqlAvailable() {
+        return mysqlAvailable;
+    }
+
+    public boolean shouldFallbackToYaml() {
+        return plugin.getConfig().getBoolean("storage.mysql.fallback-to-yaml", true);
     }
 
     public String getTable() {
@@ -72,6 +113,8 @@ public final class DatabaseManager {
     }
 
     public synchronized void close() {
+        mysqlAvailable = false;
+
         try {
             if (connection != null && !connection.isClosed()) {
                 connection.close();
